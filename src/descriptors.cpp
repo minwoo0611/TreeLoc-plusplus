@@ -64,15 +64,11 @@ std::vector<Tree> Deduplicate(const std::vector<Tree>& trees, double tol) {
 void ApplyTransform(std::vector<Tree>& trees, const Eigen::Matrix4d& T) {
     const Eigen::Matrix3d R = T.block<3, 3>(0, 0);
     for (auto& tree : trees) {
-        const double z = std::isfinite(tree.z)
-            ? tree.z
-            : (std::isfinite(tree.alignment_z) ? tree.alignment_z : 0.0);
-        const Eigen::Vector4d p(tree.x, tree.y, z, 1.0);
+        const Eigen::Vector4d p(tree.x, tree.y, tree.z, 1.0);
         const Eigen::Vector4d pt = T * p;
         tree.x = pt.x();
         tree.y = pt.y();
-        if (std::isfinite(tree.z)) tree.z = pt.z();
-        if (std::isfinite(tree.alignment_z)) tree.alignment_z = pt.z();
+        tree.z = pt.z();
         if (tree.has_axis) tree.axis = R * tree.axis;
     }
 }
@@ -128,7 +124,7 @@ Eigen::Matrix4d ApplyFrameAlignment(std::vector<Tree>& trees,
         ApplyTransform(align_rows, T);
         total = T * total;
     }
-    if (config.apply_axis_alignment && align_rows.size() >= 3) {
+    if (config.tree_axis_alignment_enabled && align_rows.size() >= 3) {
         Eigen::Matrix4d T = AxisAlignment(align_rows);
         ApplyTransform(trees, T);
         total = T * total;
@@ -144,7 +140,9 @@ FrameData BuildFrame(const std::filesystem::path& root,
                      double yaw_offset_deg) {
     FrameData frame;
     frame.index = idx;
-    if (idx >= 0 && idx < static_cast<int>(trajectory.size())) frame.pose = trajectory[idx];
+    if (idx >= 0 && idx < static_cast<int>(trajectory.size())) {
+        frame.pose = trajectory[idx];
+    }
 
     std::vector<Tree> raw = ReadTreeCsv(root / ("TreeManagerState_" + std::to_string(idx) + ".csv"));
     std::vector<Tree> current;
@@ -195,7 +193,8 @@ FrameData BuildFrame(const std::filesystem::path& root,
         }
     }
 
-    frame.alignment_transform = ApplyFrameAlignment(frame.trees, current, config, yaw_offset_deg);
+    frame.alignment_transform =
+        ApplyFrameAlignment(frame.trees, current, config, yaw_offset_deg);
 
     frame.centers.reserve(frame.trees.size());
     for (const auto& tree : frame.trees) frame.centers.emplace_back(tree.x, tree.y);

@@ -30,7 +30,6 @@ struct Tree {
     double x = 0.0;
     double y = 0.0;
     double z = 0.0;
-    double alignment_z = 0.0;
     double dbh = 0.0;
     double dbh_approximation = 0.0;
     double score = 1.0;

@@ -1,4 +1,5 @@
 #include <iostream>
+#include <exception>
 
 #include "treelocpp/eval.h"
 
@@ -12,7 +13,12 @@ int main(int argc, char** argv) {
         return 1;
     }
     config.mode = "inter";
-    const auto summary = treelocpp::RunInterSession(config);
-    treelocpp::PrintSummary(summary, std::cout);
+    try {
+        const auto summary = treelocpp::RunInterSession(config);
+        treelocpp::PrintSummary(summary, std::cout);
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << "\n";
+        return 1;
+    }
     return 0;
 }

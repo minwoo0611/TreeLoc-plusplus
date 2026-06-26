@@ -1,10 +1,11 @@
 <div align="center">
 
-<h1>TreeLoc++: Multi-Session Forest Localization with Tree Geometry</h1>
+<h1>TreeLoc++: Robust 6-DoF LiDAR Localization in Forests</h1>
 
 Official repository for **TreeLoc++**.
 
-<a href="https://github.com/minwoo0611/TreeLoc" target="_blank">TreeLoc</a> | TreeLoc++
+<a href="https://arxiv.org/abs/2603.03695" target="_blank">Paper</a> |
+<a href="https://github.com/minwoo0611/TreeLoc" target="_blank">TreeLoc</a>
 
 </div>
 
@@ -12,17 +13,21 @@ Official repository for **TreeLoc++**.
 - [2026/06/25] Initial TreeLoc++ branch with intra-session and inter-session C++ code.
 
 ### Contributions
-- **TreeLoc++ extends TreeLoc to intra-session and inter-session forest localization** using TDH retrieval, pairwise tree-distance histograms, triangle verification, DBH-aware matching, and yaw-voting initialization.
-- **TreeLoc++ uses tree-level CSV files with `location_z` read directly from CSV when available**, so runtime localization does not require `terrain.obj` or `trajectory_tree.txt`.
-- **TreeLoc++ keeps parameters in YAML config files** for dataset paths, descriptor settings, neighbor augmentation, pairwise weighting, yaw voting, DBH gates, and vertical correction.
+- **TreeLoc++ performs forest localization on compact Digital Forest Inventories (DFIs)**, representing tree stems with geometric attributes rather than dense point-cloud maps.
+- **TreeLoc++ improves retrieval in structurally ambiguous forests** by combining TDH retrieval with pairwise tree-layout context, triangle verification, DBH consistency, and yaw-consistent inlier selection.
+- **TreeLoc++ estimates full 6-DoF corrections from tree geometry** by jointly refining height, roll, and pitch after geometric matching.
+- **TreeLoc++ supports long-term and multi-session evaluation** across repeated forest traversals using the same tree-level map interface.
 
-### Dataset
+### Data Source and Tree Extraction
 
-Full dataset will be opened after finalaccpetance.
+TreeLoc++ consumes tree-level observations extracted before evaluation. The bundled evaluation data covers Wild-Places Venman sequences and Oxford Forest Evo/Stein sequences; following TreeLoc, tree observations can be produced with [RealtimeTrees](https://github.com/ori-drs/realtime_trees) from the corresponding forest LiDAR recordings.
 
-This branch includes small public samples under `sample_data/`. The samples are generated from the Oxford V-02 and V-03 large-cluster traces and contain short sequences with `axis_*`, `location_x`, `location_y`, `location_z`, DBH, reconstruction, cluster, and score fields.
+The bundled processed datasets correspond to:
 
-The runtime dataset format is:
+- `Wild_V02` and `Wild_V03`: Wild-Places Venman sequences. The raw dataset is available from the [Wild-Places project page](https://csiro-robotics.github.io/Wild-Places/) and [CSIRO Data Access Portal](https://data.csiro.au/collection/csiro%3A56372).
+- `Oxford_Evo` and `Oxford_Stein`: Oxford Forest sequences. The raw recordings are available from the [Oxford Forest Place Recognition Dataset](https://dynamic.robots.ox.ac.uk/datasets/oxford-forest/).
+
+The evaluator expects a processed dataset root:
 
 ```text
 dataset_root/
@@ -49,9 +54,6 @@ Optional columns used when available:
 - `reconstructed`
 - `number_clusters`
 - `score` or `scores`
-- `alignment_z`
-
-`tools/prepare_sample_data.py` copies TreeLoc-style CSV rows without `trajectory_tree.txt` normalization. If the source CSV already has `location_z`, the value is preserved. If `location_z` is missing, pass `--terrain` to fill tree heights from `terrain.obj` with 6-NN inverse-distance interpolation.
 
 ### Prerequisites
 
@@ -94,59 +96,52 @@ Inter-session:
 ./build/treelocpp_inter config/inter.yaml
 ```
 
-Regenerate the sample from a full local TreeLoc++ sequence:
+The publish tree keeps the four processed evaluation datasets under `data/`:
 
-```bash
-python3 tools/prepare_sample_data.py \
-  --source /path/to/oxford/V-02_large_cluster \
-  --terrain /path/to/oxford/terrain.obj \
-  --output sample_data/oxford_v02 \
-  --frames 60
+```text
+data/Wild_V02/
+data/Wild_V03/
+data/Oxford_Evo/
+data/Oxford_Stein/
 ```
 
-The 60-frame samples are intended for build and runtime smoke tests. Intra-session metrics should be measured on a full sequence because a short slice may not contain positive pairs after temporal filtering.
-
-Full intra-session evaluation should use the full sequence:
+Run intra-session evaluation:
 
 ```bash
-python3 tools/prepare_sample_data.py \
-  --source /path/to/oxford/V-02_large_cluster \
-  --terrain /path/to/oxford/terrain.obj \
-  --output data/oxford_v02_intra
-
 ./build/treelocpp_intra config/full_v02.yaml
+./build/treelocpp_intra config/full_v03.yaml
+./build/treelocpp_intra config/full_oxford_evo.yaml
+./build/treelocpp_intra config/full_oxford_stein.yaml
 ```
 
-Full inter-session evaluation uses Oxford V-03 as query and Oxford V-02 as map:
+Run inter-session evaluation:
 
 ```bash
-python3 tools/prepare_sample_data.py \
-  --source /path/to/oxford/V-02_large_cluster \
-  --terrain /path/to/oxford/terrain.obj \
-  --output data/oxford_v02
-
-python3 tools/prepare_sample_data.py \
-  --source /path/to/oxford/V-03_large_cluster \
-  --terrain /path/to/oxford/terrain.obj \
-  --output data/oxford_v03
-
 ./build/treelocpp_inter config/inter_v02_v03.yaml
 ```
 
-`config/inter_v02_v03.yaml` uses local TreeLoc-style axis alignment, V-region test polygons, and a 5 m ground-truth radius.
+`config/inter_v02_v03.yaml` uses the Wild_V/Wild_K test-region family selected by `test_region_family` and a 5 m ground-truth radius.
 
 ### Configuration
 
-Main parameters are in:
+Main parameters are grouped by role in:
 
-- `config/default.yaml` for intra-session evaluation
-- `config/inter.yaml` for inter-session evaluation
-- `config/full_v02.yaml` for full Oxford V-02 intra-session evaluation
-- `config/full_v03.yaml` for full Oxford V-03 intra-session evaluation
-- `config/inter_v02_v03.yaml` for full Oxford V-03-to-V-02 inter-session evaluation
+- `config/default.yaml` for intra-session evaluation on `data/Wild_V02`
+- `config/inter.yaml` for inter-session evaluation on `data/Wild_V03` vs `data/Wild_V02`
+- `config/full_v02.yaml` for full Wild_V02 intra-session evaluation
+- `config/full_v03.yaml` for full Wild_V03 intra-session evaluation
+- `config/full_oxford_evo.yaml` for full Oxford_Evo intra-session evaluation
+- `config/full_oxford_stein.yaml` for full Oxford_Stein intra-session evaluation
+- `config/inter_v02_v03.yaml` for full Wild_V03-to-Wild_V02 inter-session evaluation
 
-The defaults preserve the TreeLoc++ experiment settings used in the previous single-file implementation: TDH + pairwise retrieval, triangle hash reranking, DBH-aware triangle matching, yaw voting, neighbor augmentation, t-aware overlap, and z/roll/pitch correction from precomputed tree heights.
+The YAML files use sections such as `dataset`, `evaluation`, `retrieval`, `tree_selection`, `tdh`, `triangle_descriptor`, and `pose_refinement`; each variable has an inline comment describing its role. The public configuration keeps method-level settings exposed and leaves tree-axis alignment as the default TreeLoc++ descriptor-frame construction step. Legacy flat keys are still accepted by the parser for compatibility.
+
+### TODO
+
+- Multi-session Dataset (Evo25) upload
+- Remaining dataset upload
+- Multi-session graph optimization
 
 ### Acknowledgement
 
-TreeLoc++ builds on TreeLoc and tree-level representations extracted with RealtimeTrees from forest LiDAR data.
+TreeLoc++ builds on [TreeLoc](https://arxiv.org/abs/2602.01501), tree-level representations extracted with [RealtimeTrees](https://github.com/ori-drs/realtime_trees), and forest LiDAR recordings from the [Wild-Places](https://csiro-robotics.github.io/Wild-Places/) and [Oxford Forest Place Recognition](https://dynamic.robots.ox.ac.uk/datasets/oxford-forest/) datasets.

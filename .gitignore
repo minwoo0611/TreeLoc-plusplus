@@ -1,6 +1,5 @@
 build/
 build-release/
-data/
 *.o
 *.so
 *.a
@@ -8,3 +7,4 @@ data/
 __pycache__/
 results/
 tmp/
+local_tools/

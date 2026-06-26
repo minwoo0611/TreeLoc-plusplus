@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <stdexcept>
 #include <sstream>
 #include <unordered_map>
 
@@ -50,6 +51,40 @@ std::string Cell(const std::vector<std::string>& cells,
     return cells[it->second];
 }
 
+const std::vector<std::string>& RequiredTreeCsvColumns() {
+    static const std::vector<std::string> columns = [] {
+        std::vector<std::string> out = {"location_x", "location_y", "location_z"};
+        for (int r = 0; r < 3; ++r) {
+            for (int c = 0; c < 3; ++c) {
+                out.push_back("axis_" + std::to_string(r) + std::to_string(c));
+            }
+        }
+        return out;
+    }();
+    return columns;
+}
+
+void RequireColumn(const std::unordered_map<std::string, size_t>& columns,
+                   const std::filesystem::path& path,
+                   const std::string& name) {
+    if (!columns.count(name)) {
+        throw std::runtime_error(path.string() + " is missing required CSV column: " + name);
+    }
+}
+
+double RequiredDouble(const std::vector<std::string>& cells,
+                      const std::unordered_map<std::string, size_t>& columns,
+                      const std::filesystem::path& path,
+                      int line_number,
+                      const std::string& name) {
+    const double value = ToDouble(Cell(cells, columns, name), std::numeric_limits<double>::quiet_NaN());
+    if (!std::isfinite(value)) {
+        throw std::runtime_error(path.string() + ":" + std::to_string(line_number) +
+                                 " has invalid required numeric value for " + name);
+    }
+    return value;
+}
+
 }  // namespace
 
 std::vector<Pose> ReadTrajectory(const std::filesystem::path& path) {
@@ -77,33 +112,25 @@ std::vector<Tree> ReadTreeCsv(const std::filesystem::path& path) {
     std::unordered_map<std::string, size_t> columns;
     for (size_t i = 0; i < header.size(); ++i) columns[header[i]] = i;
 
-    bool has_axis = true;
-    for (int r = 0; r < 3; ++r) {
-        for (int c = 0; c < 3; ++c) {
-            if (!columns.count("axis_" + std::to_string(r) + std::to_string(c))) {
-                has_axis = false;
-            }
-        }
-    }
+    for (const auto& required : RequiredTreeCsvColumns()) RequireColumn(columns, path, required);
 
+    int line_number = 1;
     while (std::getline(in, line)) {
+        ++line_number;
         if (line.empty()) continue;
         const auto cells = SplitCsv(line);
         Tree tree;
-        tree.has_axis = has_axis;
-        if (has_axis) {
-            for (int r = 0; r < 3; ++r) {
-                for (int c = 0; c < 3; ++c) {
-                    tree.axis(r, c) =
-                        ToDouble(Cell(cells, columns, "axis_" + std::to_string(r) + std::to_string(c)),
-                                 r == c ? 1.0 : 0.0);
-                }
+        tree.has_axis = true;
+        for (int r = 0; r < 3; ++r) {
+            for (int c = 0; c < 3; ++c) {
+                tree.axis(r, c) =
+                    RequiredDouble(cells, columns, path, line_number,
+                                   "axis_" + std::to_string(r) + std::to_string(c));
             }
         }
-        tree.x = ToDouble(Cell(cells, columns, "location_x"), std::numeric_limits<double>::quiet_NaN());
-        tree.y = ToDouble(Cell(cells, columns, "location_y"), std::numeric_limits<double>::quiet_NaN());
-        tree.z = ToDouble(Cell(cells, columns, "location_z"), std::numeric_limits<double>::quiet_NaN());
-        tree.alignment_z = ToDouble(Cell(cells, columns, "alignment_z"), tree.z);
+        tree.x = RequiredDouble(cells, columns, path, line_number, "location_x");
+        tree.y = RequiredDouble(cells, columns, path, line_number, "location_y");
+        tree.z = RequiredDouble(cells, columns, path, line_number, "location_z");
         tree.dbh = ToDouble(Cell(cells, columns, "dbh"), std::numeric_limits<double>::quiet_NaN());
         tree.dbh_approximation =
             ToDouble(Cell(cells, columns, "dbh_approximation"), std::numeric_limits<double>::quiet_NaN());
@@ -113,7 +140,7 @@ std::vector<Tree> ReadTreeCsv(const std::filesystem::path& path) {
                               ToDouble(Cell(cells, columns, "scores"), 1.0));
         tree.reconstructed = ToInt(Cell(cells, columns, "reconstructed"), 1);
         tree.number_clusters = ToInt(Cell(cells, columns, "number_clusters"), 3);
-        if (std::isfinite(tree.x) && std::isfinite(tree.y) && std::isfinite(tree.dbh)) {
+        if (std::isfinite(tree.dbh)) {
             trees.push_back(tree);
         }
     }
@@ -145,6 +172,58 @@ std::vector<int> DiscoverFrameIndices(const std::filesystem::path& root, int max
         if (HasFrameCsv(root, i)) indices.push_back(i);
     }
     return indices;
+}
+
+std::vector<std::string> TreeCsvSchemaErrors(const std::filesystem::path& root,
+                                             int max_frames,
+                                             const std::string& label) {
+    const auto indices = DiscoverFrameIndices(root, max_frames);
+    std::unordered_map<std::string, std::vector<std::string>> missing_by_column;
+    std::vector<std::string> unreadable;
+    std::vector<std::string> empty;
+
+    for (int idx : indices) {
+        const std::filesystem::path path = root / ("TreeManagerState_" + std::to_string(idx) + ".csv");
+        const std::string name = path.filename().string();
+        std::ifstream in(path);
+        if (!in) {
+            unreadable.push_back(name);
+            continue;
+        }
+        std::string line;
+        if (!std::getline(in, line)) {
+            empty.push_back(name);
+            continue;
+        }
+        const auto header = SplitCsv(line);
+        std::unordered_map<std::string, size_t> columns;
+        for (size_t i = 0; i < header.size(); ++i) columns[header[i]] = i;
+        for (const auto& required : RequiredTreeCsvColumns()) {
+            if (!columns.count(required)) missing_by_column[required].push_back(name);
+        }
+    }
+
+    if (missing_by_column.empty() && unreadable.empty() && empty.empty()) return {};
+
+    std::vector<std::string> lines;
+    const std::string prefix = label.empty() ? root.string() : label + " (" + root.string() + ")";
+    lines.push_back(prefix + " CSV schema errors:");
+    if (!unreadable.empty()) {
+        lines.push_back("  unreadable CSV files (" + std::to_string(unreadable.size()) + "):");
+        for (const auto& name : unreadable) lines.push_back("    " + name);
+    }
+    if (!empty.empty()) {
+        lines.push_back("  empty CSV files (" + std::to_string(empty.size()) + "):");
+        for (const auto& name : empty) lines.push_back("    " + name);
+    }
+    for (const auto& required : RequiredTreeCsvColumns()) {
+        const auto it = missing_by_column.find(required);
+        if (it == missing_by_column.end()) continue;
+        lines.push_back("  missing required column " + required + " in " +
+                        std::to_string(it->second.size()) + " file(s):");
+        for (const auto& name : it->second) lines.push_back("    " + name);
+    }
+    return lines;
 }
 
 std::string DatasetName(const std::filesystem::path& root) {

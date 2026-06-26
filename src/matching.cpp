@@ -135,6 +135,81 @@ PlaneCorrection EstimatePlaneCorrection(const std::vector<double>& delta_z,
     return out;
 }
 
+Eigen::Matrix3d EstimateAxisRollPitch(const std::vector<Eigen::Vector3d>& query_up,
+                                      const std::vector<Eigen::Vector3d>& candidate_up,
+                                      const Eigen::Matrix3d& Rz_q2c,
+                                      int ransac_iters = 200,
+                                      double inlier_angle_deg = 2.5,
+                                      double min_inlier_ratio = 0.5) {
+    std::vector<Eigen::Vector3d> uq;
+    std::vector<Eigen::Vector3d> uc_in_q;
+    uq.reserve(query_up.size());
+    uc_in_q.reserve(candidate_up.size());
+    for (size_t i = 0; i < query_up.size() && i < candidate_up.size(); ++i) {
+        Eigen::Vector3d q = query_up[i];
+        Eigen::Vector3d c = Rz_q2c.transpose() * candidate_up[i];
+        if (!q.allFinite() || !c.allFinite() || q.norm() < 1e-9 || c.norm() < 1e-9) continue;
+        q.normalize();
+        c.normalize();
+        if (q.dot(c) < 0.0) c = -c;
+        uq.push_back(q);
+        uc_in_q.push_back(c);
+    }
+    const int n = static_cast<int>(uq.size());
+    if (n == 0) return Eigen::Matrix3d::Identity();
+
+    auto fit_kabsch = [&](const std::vector<int>& ids) {
+        Eigen::Matrix3d M = Eigen::Matrix3d::Zero();
+        for (int id : ids) M += uc_in_q[id] * uq[id].transpose();
+        return ProjectSO3(M);
+    };
+
+    const double threshold = inlier_angle_deg * M_PI / 180.0;
+    auto is_inlier = [&](const Eigen::Matrix3d& R, int idx) {
+        double c = (R * uq[idx]).dot(uc_in_q[idx]);
+        c = std::clamp(c, -1.0, 1.0);
+        return std::acos(c) <= threshold;
+    };
+
+    int best_count = 0;
+    std::vector<int> best_set;
+    Eigen::Matrix3d best_R = Eigen::Matrix3d::Identity();
+    std::mt19937_64 rng(1234);
+    std::uniform_int_distribution<int> uni(0, n - 1);
+
+    for (int iter = 0; iter < std::max(1, ransac_iters); ++iter) {
+        std::vector<int> seed;
+        if (n == 1) {
+            seed = {0};
+        } else {
+            int i0 = uni(rng);
+            int i1 = uni(rng);
+            while (i1 == i0 && n > 1) i1 = uni(rng);
+            seed = {i0, i1};
+        }
+        const Eigen::Matrix3d R = fit_kabsch(seed);
+        std::vector<int> inliers;
+        for (int i = 0; i < n; ++i) {
+            if (is_inlier(R, i)) inliers.push_back(i);
+        }
+        if (static_cast<int>(inliers.size()) > best_count) {
+            best_count = static_cast<int>(inliers.size());
+            best_set = std::move(inliers);
+            best_R = R;
+        }
+    }
+
+    if (best_count < 5 || best_count < static_cast<int>(std::ceil(min_inlier_ratio * n))) {
+        return Eigen::Matrix3d::Identity();
+    }
+
+    best_R = fit_kabsch(best_set);
+    const double yaw = std::atan2(best_R(1, 0), best_R(0, 0));
+    const Eigen::Matrix3d R_rp =
+        Eigen::AngleAxisd(-yaw, Eigen::Vector3d::UnitZ()).toRotationMatrix() * best_R;
+    return ProjectSO3(R_rp);
+}
+
 bool Rigid2D(const std::vector<Eigen::Vector2d>& q,
              const std::vector<Eigen::Vector2d>& c,
              Eigen::Matrix2d& R,
@@ -706,24 +781,7 @@ PoseCorrection EstimateVerticalCorrection(const FrameData& query,
     if (uq.size() >= 2) {
         Eigen::Matrix3d Rz = Eigen::Matrix3d::Identity();
         Rz.block<2, 2>(0, 0) = transform.R;
-        Eigen::Matrix3d M = Eigen::Matrix3d::Zero();
-        for (size_t i = 0; i < uq.size(); ++i) {
-            Eigen::Vector3d c_in_q = Rz.transpose() * uc[i];
-            if (uq[i].dot(c_in_q) < 0.0) c_in_q = -c_in_q;
-            M += c_in_q * uq[i].transpose();
-        }
-        Eigen::JacobiSVD<Eigen::Matrix3d> svd(M, Eigen::ComputeFullU | Eigen::ComputeFullV);
-        Eigen::Matrix3d U = svd.matrixU();
-        Eigen::Matrix3d V = svd.matrixV();
-        Eigen::Matrix3d R = U * V.transpose();
-        if (R.determinant() < 0.0) {
-            U.col(2) *= -1.0;
-            R = U * V.transpose();
-        }
-        const double yaw = std::atan2(R(1, 0), R(0, 0));
-        R_rp_q2c =
-            Eigen::AngleAxisd(-yaw, Eigen::Vector3d::UnitZ()).toRotationMatrix() * R;
-        R_rp_q2c = ProjectSO3(R_rp_q2c);
+        R_rp_q2c = EstimateAxisRollPitch(uq, uc, Rz);
         double roll = 0.0;
         double pitch = 0.0;
         double yaw_rp = 0.0;

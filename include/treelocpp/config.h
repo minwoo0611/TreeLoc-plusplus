@@ -10,20 +10,21 @@ namespace treelocpp {
 
 struct Config {
     std::string mode = "intra";
-    std::filesystem::path dataset_root = "sample_data/oxford_v02";
-    std::filesystem::path query_root = "sample_data/oxford_v03";
-    std::filesystem::path database_root = "sample_data/oxford_v02";
+    std::filesystem::path dataset_root = "data/Wild_V02";
+    std::filesystem::path query_root = "data/Wild_V03";
+    std::filesystem::path database_root = "data/Wild_V02";
 
-    int max_frames = 60;
-    double spatial_threshold = 10.0;
+    int max_frames = 0;
+    double spatial_threshold = 5.0;
     bool use_test_polygons = false;
-    int temporal_min_separation = 10;
+    std::string test_polygon_family = "auto";
+    int temporal_min_separation = 50;
     int recall_k = 1;
     int histogram_k = 100;
     int rerank_k = 10;
 
     int knn_k = 10;
-    double min_dist = 2.0;
+    double min_dist = 1.0;
     double max_dist = 30.0;
     double delta_l = 0.1;
     long long rho = 100007;
@@ -35,10 +36,10 @@ struct Config {
     bool neighbor_augment = true;
     bool neighbor_past_only = true;
     int neighbor_max_scenes = 5;
-    double neighbor_radius = 10.0;
+    double neighbor_radius = 5.0;
     int min_reconstructed_per_frame = 15;
-    double dedup_distance = 0.2;
-    bool apply_axis_alignment = false;
+    double dedup_distance = 0.4;
+    bool tree_axis_alignment_enabled = true;
     double dataset_yaw_deg = 0.0;
     double query_yaw_deg = 0.0;
     double database_yaw_deg = 0.0;
@@ -56,15 +57,15 @@ struct Config {
 
     bool tdh_use_rec_only = false;
     bool pairwise_use_rec_only = true;
-    double pairwise_weight = 0.8;
+    double pairwise_weight = 0.5;
     double pairwise_min_dist = 0.0;
     double pairwise_max_dist = 10.0;
     int pairwise_bins = 40;
     int pairwise_max_pairs = 5000;
-    bool pairwise_soft_binning = true;
+    bool pairwise_soft_binning = false;
 
     bool use_t_aware_overlap = true;
-    double t_aware_tau = 10.0;
+    double t_aware_tau = 5.0;
     double t_aware_power = 2.0;
     std::string t_aware_mode = "exp";
 
