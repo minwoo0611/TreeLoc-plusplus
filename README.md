@@ -87,13 +87,13 @@ This builds:
 Intra-session:
 
 ```bash
-./build/treelocpp_intra config/default.yaml
+./build/treelocpp_intra config/full_v02.yaml
 ```
 
 Inter-session:
 
 ```bash
-./build/treelocpp_inter config/inter.yaml
+./build/treelocpp_inter config/inter_v02_v03.yaml
 ```
 
 The publish tree keeps the four processed evaluation datasets under `data/`:
@@ -126,8 +126,6 @@ Run inter-session evaluation:
 
 Main parameters are grouped by role in:
 
-- `config/default.yaml` for intra-session evaluation on `data/Wild_V02`
-- `config/inter.yaml` for inter-session evaluation on `data/Wild_V03` vs `data/Wild_V02`
 - `config/full_v02.yaml` for full Wild_V02 intra-session evaluation
 - `config/full_v03.yaml` for full Wild_V03 intra-session evaluation
 - `config/full_oxford_evo.yaml` for full Oxford_Evo intra-session evaluation
