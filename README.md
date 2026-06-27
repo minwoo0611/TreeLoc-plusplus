@@ -10,7 +10,7 @@ Official repository for **TreeLoc++**.
 </div>
 
 ### Recent Updates
-- [2026/06/27] Added public dataset release details and multi-session pose-edge/graph-optimization code.
+- [2026/06/27] Added public dataset release details and multi-session pose graph optimization code.
 - [2026/06/25] Initial TreeLoc++ branch with intra-session and inter-session C++ code.
 
 ### Contributions
