@@ -10,8 +10,7 @@ namespace treelocpp {
 
 Dataset LoadDataset(const std::filesystem::path& root,
                     const Config& config,
-                    bool past_only,
-                    double yaw_offset_deg = 0.0);
+                    bool past_only);
 std::vector<Tree> SelectTrees(const std::vector<Tree>& trees, const Config& config);
 Eigen::MatrixXd ComputeTDH(const std::vector<Tree>& trees,
                            const std::vector<RangeBin>& spatial_bins,

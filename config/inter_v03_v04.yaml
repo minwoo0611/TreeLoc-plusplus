@@ -31,10 +31,6 @@ neighbor_augmentation:
   search_radius_m: 10.0  # XY radius for selecting augmentation neighbors.
   min_reconstructed_trees: 10  # Reconstructed-tree count below which augmentation is attempted.
 
-yaw_offsets:
-  query_deg: 0.0  # Fixed yaw offset applied to query local trees before descriptors.
-  map_deg: 60.0  # Fixed yaw offset applied to map local trees before descriptors.
-
 tdh:
   use_reconstructed_only: false  # Whether Tree Distribution Histogram uses only reconstructed trees.
   dbh_min_m: 0.0  # Minimum DBH descriptor value.
@@ -49,7 +45,6 @@ tdh:
 
 pairwise_context:
   use_reconstructed_only: true  # Whether pairwise context uses only reconstructed trees.
-  weight: 0.5  # Pairwise-context weight in combined retrieval scoring.
   min_distance_m: 0.0  # Minimum pairwise tree distance.
   max_distance_m: 10.0  # Maximum pairwise tree distance.
   bin_count: 40  # Number of pairwise distance histogram bins.

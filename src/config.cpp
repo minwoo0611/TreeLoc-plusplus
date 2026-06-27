@@ -157,9 +157,6 @@ void Assign(const std::string& key, const std::string& value, Config& config, si
     else if (IsKey(normalized, {"min_reconstructed_per_frame", "neighbor_augmentation.min_reconstructed_trees"})) config.min_reconstructed_per_frame = ParseNumber<int>(value, normalized, line_no);
     else if (IsKey(normalized, {"dedup_distance", "tree_selection.dedup_radius_m"})) config.dedup_distance = ParseNumber<double>(value, normalized, line_no);
     else if (IsKey(normalized, {"apply_axis_alignment", "tree_axis_alignment.enabled"})) config.tree_axis_alignment_enabled = ParseBool(value, normalized, line_no);
-    else if (IsKey(normalized, {"dataset_yaw_deg", "yaw_offsets.dataset_deg"})) config.dataset_yaw_deg = ParseNumber<double>(value, normalized, line_no);
-    else if (IsKey(normalized, {"query_yaw_deg", "yaw_offsets.query_deg"})) config.query_yaw_deg = ParseNumber<double>(value, normalized, line_no);
-    else if (IsKey(normalized, {"database_yaw_deg", "yaw_offsets.map_deg", "yaw_offsets.database_deg"})) config.database_yaw_deg = ParseNumber<double>(value, normalized, line_no);
     else if (IsKey(normalized, {"min_radius", "tdh.dbh_min_m"})) config.min_radius = ParseNumber<double>(value, normalized, line_no);
     else if (IsKey(normalized, {"max_radius", "tdh.dbh_max_m"})) config.max_radius = ParseNumber<double>(value, normalized, line_no);
     else if (IsKey(normalized, {"total_section", "tdh.dbh_sections"})) config.total_section = ParseNumber<int>(value, normalized, line_no);
@@ -171,7 +168,6 @@ void Assign(const std::string& key, const std::string& value, Config& config, si
     else if (IsKey(normalized, {"spatial_bin_max", "tdh.spatial_max_m"})) config.spatial_bin_max = ParseNumber<double>(value, normalized, line_no);
     else if (IsKey(normalized, {"tdh_use_rec_only", "tdh.use_reconstructed_only"})) config.tdh_use_rec_only = ParseBool(value, normalized, line_no);
     else if (IsKey(normalized, {"pairwise_use_rec_only", "pairwise_context.use_reconstructed_only"})) config.pairwise_use_rec_only = ParseBool(value, normalized, line_no);
-    else if (IsKey(normalized, {"pairwise_weight", "pairwise_context.weight"})) config.pairwise_weight = ParseNumber<double>(value, normalized, line_no);
     else if (IsKey(normalized, {"pairwise_min_dist", "pairwise_context.min_distance_m"})) config.pairwise_min_dist = ParseNumber<double>(value, normalized, line_no);
     else if (IsKey(normalized, {"pairwise_max_dist", "pairwise_context.max_distance_m"})) config.pairwise_max_dist = ParseNumber<double>(value, normalized, line_no);
     else if (IsKey(normalized, {"pairwise_bins", "pairwise_context.bin_count"})) config.pairwise_bins = ParseNumber<int>(value, normalized, line_no);

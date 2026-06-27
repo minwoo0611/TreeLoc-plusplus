@@ -46,9 +46,6 @@ struct Config {
     int min_reconstructed_per_frame = 15;
     double dedup_distance = 0.4;
     bool tree_axis_alignment_enabled = true;
-    double dataset_yaw_deg = 0.0;
-    double query_yaw_deg = 0.0;
-    double database_yaw_deg = 0.0;
 
     double min_radius = 0.0;
     double max_radius = 0.8;
@@ -63,7 +60,6 @@ struct Config {
 
     bool tdh_use_rec_only = false;
     bool pairwise_use_rec_only = true;
-    double pairwise_weight = 0.5;
     double pairwise_min_dist = 0.0;
     double pairwise_max_dist = 10.0;
     int pairwise_bins = 40;

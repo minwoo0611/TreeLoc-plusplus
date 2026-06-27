@@ -25,6 +25,8 @@ namespace {
 
 using PolygonSet = std::vector<std::vector<Eigen::Vector2d>>;
 
+constexpr double kPairwiseContextWeight = 0.5;
+
 struct LocalizationDetail {
     bool valid = false;
     bool ok_2d = false;
@@ -471,7 +473,7 @@ std::pair<int, int> TopCandidateGtCounts(const Dataset& qset,
     for (auto& s : scores) {
         const double tdh = (s.tdh - tdh_min) / tdh_den;
         const double pw = (s.pw - pw_min) / pw_den;
-        s.combined = (1.0 - config.pairwise_weight) * tdh + config.pairwise_weight * pw;
+        s.combined = (1.0 - kPairwiseContextWeight) * tdh + kPairwiseContextWeight * pw;
     }
     const int top_hist = std::min(config.histogram_k, static_cast<int>(scores.size()));
     auto by_combined = [](const Score& a, const Score& b) {
@@ -511,8 +513,8 @@ void RunInterPair(const Config& config,
     schema_errors.insert(schema_errors.end(), database_errors.begin(), database_errors.end());
     ThrowIfSchemaErrors(schema_errors);
 
-    Dataset queries = LoadDataset(query_root, config, config.neighbor_past_only, config.query_yaw_deg);
-    Dataset database = LoadDataset(database_root, config, config.neighbor_past_only, config.database_yaw_deg);
+    Dataset queries = LoadDataset(query_root, config, config.neighbor_past_only);
+    Dataset database = LoadDataset(database_root, config, config.neighbor_past_only);
     const PolygonSet* test_polygons = nullptr;
     if (config.use_test_polygons) test_polygons = &SelectTestPolygons(config, query_root);
     summary.queries += static_cast<int>(queries.frames.size());
@@ -585,7 +587,7 @@ void RunInterPair(const Config& config,
 
 EvaluationSummary RunIntraSession(const Config& config) {
     ThrowIfSchemaErrors(TreeCsvSchemaErrors(config.dataset_root, config.max_frames, "dataset_root"));
-    Dataset dataset = LoadDataset(config.dataset_root, config, config.neighbor_past_only, config.dataset_yaw_deg);
+    Dataset dataset = LoadDataset(config.dataset_root, config, config.neighbor_past_only);
     EvaluationSummary summary;
     summary.localization_translation_threshold_m = config.localization_translation_threshold_m;
     summary.localization_rotation_threshold_deg = config.localization_rotation_threshold_deg;

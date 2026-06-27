@@ -23,6 +23,7 @@ constexpr std::array<std::array<int, 3>, 6> kPerms{{
     {{0, 1, 2}}, {{0, 2, 1}}, {{1, 0, 2}},
     {{1, 2, 0}}, {{2, 0, 1}}, {{2, 1, 0}}
 }};
+constexpr double kPairwiseContextWeight = 0.5;
 
 double TreeRadius(const Tree& tree) {
     return std::isfinite(tree.dbh) ? tree.dbh : tree.dbh_approximation;
@@ -859,7 +860,7 @@ std::vector<CandidateResult> RankCandidates(const Dataset& query_set,
     for (auto& s : scores) {
         const double tdh = (s.tdh - tdh_min) / tdh_den;
         const double pw = (s.pw - pw_min) / pw_den;
-        s.combined = (1.0 - config.pairwise_weight) * tdh + config.pairwise_weight * pw;
+        s.combined = (1.0 - kPairwiseContextWeight) * tdh + kPairwiseContextWeight * pw;
     }
     const int top_hist = std::min(config.histogram_k, static_cast<int>(scores.size()));
     auto by_combined = [](const Score& a, const Score& b) {

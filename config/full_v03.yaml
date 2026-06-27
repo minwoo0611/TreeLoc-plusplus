@@ -43,7 +43,6 @@ tdh:
 
 pairwise_context:
   use_reconstructed_only: true  # Whether pairwise context uses only reconstructed trees.
-  weight: 0.5  # Pairwise-context weight in combined retrieval scoring.
   min_distance_m: 0.0  # Minimum pairwise tree distance.
   max_distance_m: 10.0  # Maximum pairwise tree distance.
   bin_count: 40  # Number of pairwise distance histogram bins.

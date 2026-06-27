@@ -136,7 +136,13 @@ data/Wild_V04/
 
 `config/inter_v03_v04.yaml` uses the Wild_V test-region family selected by `test_region_family` and a 5 m ground-truth radius.
 
-Both intra-session and inter-session evaluators print `Recall@1`, `MR`, `MF1`, `AUC`, and localization `R@50`, `SR`, `ATE`, and `ARE` for 2D and 3D pose estimates. `R@50` and `SR` use `evaluation.localization_translation_threshold_m` and `evaluation.localization_rotation_threshold_deg`, which default to 0.5 m and 5 deg. `SR` is the true-pair success rate, `ATE` is translation error, and `ARE` is rotation error.
+Both intra-session and inter-session evaluators print:
+
+- `Recall@1`, `MR`, `MF1`, and `AUC` for retrieval.
+- `R@50`, `SR`, `ATE`, and `ARE` for 2D pose estimates.
+- `R@50`, `SR`, `ATE`, and `ARE` for 3D pose estimates.
+
+`R@50` and `SR` use `evaluation.localization_translation_threshold_m` and `evaluation.localization_rotation_threshold_deg`, which default to 0.5 m and 5 deg. `SR` is the true-pair success rate, `ATE` is translation error, and `ARE` is rotation error.
 
 #### Pose-Edge Export
 
@@ -146,7 +152,7 @@ Set `pose_edges.enabled: true` in a config file to export GTSAM-compatible pose 
 q_idx db_idx overlap x y z roll pitch yaw
 ```
 
-Inter-session configs can also provide comma-separated `dataset.query_roots`, `dataset.map_roots`, `dataset.query_labels`, and `dataset.map_labels` for multi-session batch export. If no GT candidate exists for a query, evaluation metrics are skipped for that query, but pose-edge export still writes ranked pairs when `pose_edges.enabled` is true.
+Inter-session configs can also provide comma-separated `dataset.query_roots`, `dataset.map_roots`, `dataset.query_labels`, and `dataset.map_labels` for multi-session batch export. If ground-truth trajectory information is unavailable, evaluation metrics are skipped, but pose-edge export still writes ranked pairs when `pose_edges.enabled` is true.
 
 #### Graph Optimization
 

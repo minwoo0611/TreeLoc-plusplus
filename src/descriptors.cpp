@@ -108,21 +108,12 @@ Eigen::Matrix4d AxisAlignment(const std::vector<Tree>& trees) {
 
 Eigen::Matrix4d ApplyFrameAlignment(std::vector<Tree>& trees,
                                     const std::vector<Tree>& current,
-                                    const Config& config,
-                                    double yaw_offset_deg) {
+                                    const Config& config) {
     Eigen::Matrix4d total = Eigen::Matrix4d::Identity();
     std::vector<Tree> align_rows;
     align_rows.reserve(current.size());
     for (const auto& tree : current) {
         if (tree.number_clusters > 2) align_rows.push_back(tree);
-    }
-    if (std::abs(yaw_offset_deg) > 1e-12) {
-        const double yaw = yaw_offset_deg * M_PI / 180.0;
-        Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
-        T.block<2, 2>(0, 0) = YawRotation(yaw);
-        ApplyTransform(trees, T);
-        ApplyTransform(align_rows, T);
-        total = T * total;
     }
     if (config.tree_axis_alignment_enabled && align_rows.size() >= 3) {
         Eigen::Matrix4d T = AxisAlignment(align_rows);
@@ -136,8 +127,7 @@ FrameData BuildFrame(const std::filesystem::path& root,
                      int idx,
                      const std::vector<Pose>& trajectory,
                      const Config& config,
-                     bool past_only,
-                     double yaw_offset_deg) {
+                     bool past_only) {
     FrameData frame;
     frame.index = idx;
     if (idx >= 0 && idx < static_cast<int>(trajectory.size())) {
@@ -193,8 +183,7 @@ FrameData BuildFrame(const std::filesystem::path& root,
         }
     }
 
-    frame.alignment_transform =
-        ApplyFrameAlignment(frame.trees, current, config, yaw_offset_deg);
+    frame.alignment_transform = ApplyFrameAlignment(frame.trees, current, config);
 
     frame.centers.reserve(frame.trees.size());
     for (const auto& tree : frame.trees) frame.centers.emplace_back(tree.x, tree.y);
@@ -239,8 +228,7 @@ std::array<int, 3> OrderedTriangle(const std::vector<Eigen::Vector2d>& centers,
 
 Dataset LoadDataset(const std::filesystem::path& root,
                     const Config& config,
-                    bool past_only,
-                    double yaw_offset_deg) {
+                    bool past_only) {
     Dataset dataset;
     dataset.root = root;
     dataset.trajectory = ReadTrajectory(root / "trajectory.txt");
@@ -248,7 +236,7 @@ Dataset LoadDataset(const std::filesystem::path& root,
     dataset.frames.reserve(indices.size());
     for (int idx : indices) {
         if (idx >= static_cast<int>(dataset.trajectory.size())) continue;
-        FrameData frame = BuildFrame(root, idx, dataset.trajectory, config, past_only, yaw_offset_deg);
+        FrameData frame = BuildFrame(root, idx, dataset.trajectory, config, past_only);
         if (frame.trees.size() >= 3 && !frame.hashes.empty()) {
             dataset.frame_to_slot[frame.index] = dataset.frames.size();
             dataset.frames.push_back(std::move(frame));
