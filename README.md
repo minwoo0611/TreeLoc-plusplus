@@ -21,7 +21,7 @@ Official repository for **TreeLoc++**.
 
 ### Data Source and Tree Extraction
 
-TreeLoc++ consumes tree-level observations extracted before evaluation. The repository includes two Wild-Places Venman sample sequences, while the full processed Oxford and Wild-Places release is distributed separately through Google Drive. Following TreeLoc, tree observations can be produced with [RealtimeTrees](https://github.com/ori-drs/realtime_trees) from the corresponding forest LiDAR recordings.
+TreeLoc++ consumes tree-level observations extracted before evaluation. The repository includes two Wild-Places Venman sample sequences, while the full processed Oxford and Wild-Places release is distributed separately through [Google Drive](https://drive.google.com/drive/folders/1O0d3Xg3oDdF0GC7BhcHZsiglNQmsUBNn?usp=sharing). Following TreeLoc, tree observations can be produced with [RealtimeTrees](https://github.com/ori-drs/realtime_trees) from the corresponding forest LiDAR recordings.
 
 The bundled sample datasets correspond to:
 
@@ -114,18 +114,6 @@ This builds:
 
 ### Usage
 
-Intra-session:
-
-```bash
-./build/treelocpp_intra config/full_v02.yaml
-```
-
-Inter-session:
-
-```bash
-./build/treelocpp_inter config/inter_v01_v02.yaml
-```
-
 The repository keeps two processed Wild-Places sample datasets under `data/`:
 
 ```text
@@ -133,14 +121,14 @@ data/Wild_V01/
 data/Wild_V02/
 ```
 
-Run intra-session evaluation:
+#### Intra-Session Localization
 
 ```bash
 ./build/treelocpp_intra config/full_v01.yaml
 ./build/treelocpp_intra config/full_v02.yaml
 ```
 
-Run inter-session evaluation:
+#### Inter-Session Localization
 
 ```bash
 ./build/treelocpp_inter config/inter_v01_v02.yaml
@@ -148,7 +136,9 @@ Run inter-session evaluation:
 
 `config/inter_v01_v02.yaml` uses the Wild_V test-region family selected by `test_region_family` and a 5 m ground-truth radius.
 
-To export GTSAM-compatible pose edges, set `pose_edges.enabled: true`. The edge files use:
+#### Pose-Edge Export
+
+Set `pose_edges.enabled: true` in a config file to export GTSAM-compatible pose edges:
 
 ```text
 q_idx db_idx overlap x y z roll pitch yaw
@@ -156,7 +146,9 @@ q_idx db_idx overlap x y z roll pitch yaw
 
 Inter-session configs can also provide comma-separated `dataset.query_roots`, `dataset.map_roots`, `dataset.query_labels`, and `dataset.map_labels` for multi-session batch export.
 
-When GTSAM is installed, graph optimization can be run with:
+#### Graph Optimization
+
+When GTSAM is installed, run:
 
 ```bash
 ./build/treelocpp_graph_opt sessions.csv results/pose_edges results/optimized
@@ -172,11 +164,7 @@ Main parameters are grouped by role in:
 - `config/full_v02.yaml` for full Wild_V02 intra-session evaluation
 - `config/inter_v01_v02.yaml` for full Wild_V01-to-Wild_V02 inter-session evaluation
 
-The YAML files use sections such as `dataset`, `evaluation`, `retrieval`, `tree_selection`, `tdh`, `triangle_descriptor`, `pose_refinement`, and `pose_edges`; each variable has an inline comment describing its role. The public configuration keeps method-level settings exposed and leaves tree-axis alignment as the default TreeLoc++ descriptor-frame construction step. Legacy flat keys are still accepted by the parser for compatibility.
-
-### TODO
-
-- Multi-session Graph Optimization
+Each YAML file includes inline comments for the exposed parameters.
 
 ### Acknowledgement
 
