@@ -15,7 +15,7 @@ std::vector<Tree> SelectTrees(const std::vector<Tree>& trees, const Config& conf
 Eigen::MatrixXd ComputeTDH(const std::vector<Tree>& trees,
                            const std::vector<RangeBin>& spatial_bins,
                            const std::vector<RangeBin>& radius_bins);
-Eigen::VectorXd ComputePairwiseHistogram(const std::vector<Tree>& trees, const Config& config);
+Eigen::VectorXd ComputePDH(const std::vector<Tree>& trees, const Config& config);
 TriangleSet ComputeKnnTriangles(const std::vector<Eigen::Vector2d>& centers,
                                 int k,
                                 double min_dist,

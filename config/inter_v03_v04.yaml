@@ -15,7 +15,7 @@ evaluation:
 
 retrieval:
   recall_at_k: 1  # Top-k cutoff used for reported recall.
-  tdh_top_k: 100  # Number of TDH/pairwise candidates before hash reranking.
+  tdh_top_k: 100  # Number of TDH/PDH candidates before hash reranking.
   hash_rerank_top_k: 10  # Number of candidates kept after triangle-hash reranking.
 
 tree_selection:
@@ -43,13 +43,13 @@ tdh:
   spatial_min_m: 0.0  # Minimum TDH spatial-bin distance.
   spatial_max_m: 30.0  # Maximum TDH spatial-bin distance.
 
-pairwise_context:
-  use_reconstructed_only: true  # Whether pairwise context uses only reconstructed trees.
-  min_distance_m: 0.0  # Minimum pairwise tree distance.
-  max_distance_m: 10.0  # Maximum pairwise tree distance.
-  bin_count: 40  # Number of pairwise distance histogram bins.
+pdh:
+  use_reconstructed_only: true  # Whether PDH uses only reconstructed trees.
+  min_distance_m: 0.0  # Minimum tree-pair distance for PDH.
+  max_distance_m: 10.0  # Maximum tree-pair distance for PDH.
+  bin_count: 40  # Number of PDH distance bins.
   max_sampled_pairs: 5000  # Maximum sampled tree pairs per frame.
-  soft_binning: false  # Whether pairwise distances are softly assigned to adjacent bins.
+  soft_binning: false  # Whether PDH distances are softly assigned to adjacent bins.
 
 triangle_descriptor:
   knn_neighbors: 15  # KNN count used when forming local tree triangles.

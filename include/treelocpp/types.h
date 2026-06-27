@@ -48,7 +48,7 @@ struct FrameData {
     std::vector<Tree> trees;
     std::vector<Eigen::Vector2d> centers;
     Eigen::MatrixXd tdh;
-    Eigen::VectorXd pairwise;
+    Eigen::VectorXd pdh;
     TriangleSet triangles;
     std::vector<std::pair<long long, int>> hashes;
     std::unordered_map<long long, int> hash_counts;

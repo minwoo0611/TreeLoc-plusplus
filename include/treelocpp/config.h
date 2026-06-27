@@ -59,12 +59,12 @@ struct Config {
     std::vector<RangeBin> spatial_range_bins;
 
     bool tdh_use_rec_only = false;
-    bool pairwise_use_rec_only = true;
-    double pairwise_min_dist = 0.0;
-    double pairwise_max_dist = 10.0;
-    int pairwise_bins = 40;
-    int pairwise_max_pairs = 5000;
-    bool pairwise_soft_binning = false;
+    bool pdh_use_rec_only = true;
+    double pdh_min_dist = 0.0;
+    double pdh_max_dist = 10.0;
+    int pdh_bins = 40;
+    int pdh_max_pairs = 5000;
+    bool pdh_soft_binning = false;
 
     bool use_t_aware_overlap = true;
     double t_aware_tau = 5.0;

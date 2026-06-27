@@ -15,7 +15,7 @@ Official repository for **TreeLoc++**.
 
 ### Contributions
 - **TreeLoc++ performs forest localization on compact Digital Forest Inventories (DFIs)**, representing tree stems with geometric attributes rather than dense point-cloud maps.
-- **TreeLoc++ improves retrieval in structurally ambiguous forests** by combining TDH retrieval with pairwise tree-layout context, triangle verification, DBH consistency, and yaw-consistent inlier selection.
+- **TreeLoc++ improves retrieval in structurally ambiguous forests** by combining TDH retrieval with PDH tree-layout context, triangle verification, DBH consistency, and yaw-consistent inlier selection.
 - **TreeLoc++ estimates full 6-DoF corrections from tree geometry** by jointly refining height, roll, and pitch after geometric matching.
 - **TreeLoc++ supports long-term and multi-session evaluation** across repeated forest traversals using the same tree-level map interface.
 

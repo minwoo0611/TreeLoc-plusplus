@@ -25,7 +25,7 @@ namespace {
 
 using PolygonSet = std::vector<std::vector<Eigen::Vector2d>>;
 
-constexpr double kPairwiseContextWeight = 0.5;
+constexpr double kPdhWeight = 0.5;
 
 struct LocalizationDetail {
     bool valid = false;
@@ -446,7 +446,7 @@ std::pair<int, int> TopCandidateGtCounts(const Dataset& qset,
     struct Score {
         size_t slot;
         double tdh;
-        double pw;
+        double pdh;
         double combined;
         int hash = 0;
     };
@@ -455,25 +455,25 @@ std::pair<int, int> TopCandidateGtCounts(const Dataset& qset,
     scores.reserve(candidate_slots.size());
     for (size_t slot : candidate_slots) {
         const FrameData& cf = dset.frames[slot];
-        scores.push_back({slot, ChiSquared(qf.tdh, cf.tdh), ChiSquared(qf.pairwise, cf.pairwise), 0.0, 0});
+        scores.push_back({slot, ChiSquared(qf.tdh, cf.tdh), ChiSquared(qf.pdh, cf.pdh), 0.0, 0});
     }
     if (scores.empty()) return {0, 0};
     double tdh_min = std::numeric_limits<double>::infinity();
     double tdh_max = -std::numeric_limits<double>::infinity();
-    double pw_min = std::numeric_limits<double>::infinity();
-    double pw_max = -std::numeric_limits<double>::infinity();
+    double pdh_min = std::numeric_limits<double>::infinity();
+    double pdh_max = -std::numeric_limits<double>::infinity();
     for (const auto& s : scores) {
         tdh_min = std::min(tdh_min, s.tdh);
         tdh_max = std::max(tdh_max, s.tdh);
-        pw_min = std::min(pw_min, s.pw);
-        pw_max = std::max(pw_max, s.pw);
+        pdh_min = std::min(pdh_min, s.pdh);
+        pdh_max = std::max(pdh_max, s.pdh);
     }
     const double tdh_den = std::max(tdh_max - tdh_min, 1e-12);
-    const double pw_den = std::max(pw_max - pw_min, 1e-12);
+    const double pdh_den = std::max(pdh_max - pdh_min, 1e-12);
     for (auto& s : scores) {
         const double tdh = (s.tdh - tdh_min) / tdh_den;
-        const double pw = (s.pw - pw_min) / pw_den;
-        s.combined = (1.0 - kPairwiseContextWeight) * tdh + kPairwiseContextWeight * pw;
+        const double pdh = (s.pdh - pdh_min) / pdh_den;
+        s.combined = (1.0 - kPdhWeight) * tdh + kPdhWeight * pdh;
     }
     const int top_hist = std::min(config.histogram_k, static_cast<int>(scores.size()));
     auto by_combined = [](const Score& a, const Score& b) {

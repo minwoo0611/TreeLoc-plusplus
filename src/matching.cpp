@@ -23,7 +23,7 @@ constexpr std::array<std::array<int, 3>, 6> kPerms{{
     {{0, 1, 2}}, {{0, 2, 1}}, {{1, 0, 2}},
     {{1, 2, 0}}, {{2, 0, 1}}, {{2, 1, 0}}
 }};
-constexpr double kPairwiseContextWeight = 0.5;
+constexpr double kPdhWeight = 0.5;
 
 double TreeRadius(const Tree& tree) {
     return std::isfinite(tree.dbh) ? tree.dbh : tree.dbh_approximation;
@@ -831,7 +831,7 @@ std::vector<CandidateResult> RankCandidates(const Dataset& query_set,
     struct Score {
         size_t slot;
         double tdh;
-        double pw;
+        double pdh;
         double combined;
         int hash;
     };
@@ -839,7 +839,7 @@ std::vector<CandidateResult> RankCandidates(const Dataset& query_set,
     scores.reserve(candidate_slots.size());
     for (size_t slot : candidate_slots) {
         const FrameData& cf = database_set.frames[slot];
-        scores.push_back({slot, ChiSquared(qf.tdh, cf.tdh), ChiSquared(qf.pairwise, cf.pairwise), 0.0, 0});
+        scores.push_back({slot, ChiSquared(qf.tdh, cf.tdh), ChiSquared(qf.pdh, cf.pdh), 0.0, 0});
     }
     if (scores.empty()) return {};
 
@@ -854,13 +854,13 @@ std::vector<CandidateResult> RankCandidates(const Dataset& query_set,
         return std::pair<double, double>{mn, mx};
     };
     const auto [tdh_min, tdh_max] = minmax(scores, [](const Score& s) { return s.tdh; });
-    const auto [pw_min, pw_max] = minmax(scores, [](const Score& s) { return s.pw; });
+    const auto [pdh_min, pdh_max] = minmax(scores, [](const Score& s) { return s.pdh; });
     const double tdh_den = std::max(tdh_max - tdh_min, 1e-12);
-    const double pw_den = std::max(pw_max - pw_min, 1e-12);
+    const double pdh_den = std::max(pdh_max - pdh_min, 1e-12);
     for (auto& s : scores) {
         const double tdh = (s.tdh - tdh_min) / tdh_den;
-        const double pw = (s.pw - pw_min) / pw_den;
-        s.combined = (1.0 - kPairwiseContextWeight) * tdh + kPairwiseContextWeight * pw;
+        const double pdh = (s.pdh - pdh_min) / pdh_den;
+        s.combined = (1.0 - kPdhWeight) * tdh + kPdhWeight * pdh;
     }
     const int top_hist = std::min(config.histogram_k, static_cast<int>(scores.size()));
     auto by_combined = [](const Score& a, const Score& b) {

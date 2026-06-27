@@ -194,10 +194,10 @@ FrameData BuildFrame(const std::filesystem::path& root,
         if (tree.reconstructed == 1) rec_only.push_back(tree);
     }
     const std::vector<Tree>& tdh_trees = config.tdh_use_rec_only ? rec_only : frame.trees;
-    const std::vector<Tree>& pw_trees = config.pairwise_use_rec_only ? rec_only : frame.trees;
+    const std::vector<Tree>& pdh_trees = config.pdh_use_rec_only ? rec_only : frame.trees;
 
     frame.tdh = ComputeTDH(tdh_trees, config.spatial_range_bins, radius_bins);
-    frame.pairwise = ComputePairwiseHistogram(pw_trees, config);
+    frame.pdh = ComputePDH(pdh_trees, config);
     frame.triangles = ComputeKnnTriangles(frame.centers, config.knn_k, config.min_dist, config.max_dist);
     frame.hashes = TriangleHashes(frame.triangles, frame.centers,
                                   config.delta_l, config.rho, config.hash_modulus);
@@ -302,59 +302,59 @@ Eigen::MatrixXd ComputeTDH(const std::vector<Tree>& trees,
     return smoothed;
 }
 
-Eigen::VectorXd ComputePairwiseHistogram(const std::vector<Tree>& trees, const Config& config) {
-    Eigen::VectorXd hist = Eigen::VectorXd::Zero(config.pairwise_bins);
+Eigen::VectorXd ComputePDH(const std::vector<Tree>& trees, const Config& config) {
+    Eigen::VectorXd hist = Eigen::VectorXd::Zero(config.pdh_bins);
     if (trees.size() < 2) return hist;
     const int n = static_cast<int>(trees.size());
-    const double range = config.pairwise_max_dist - config.pairwise_min_dist;
+    const double range = config.pdh_max_dist - config.pdh_min_dist;
     std::vector<double> distances;
     const int64_t total_pairs = static_cast<int64_t>(n) * (n - 1) / 2;
-    if (config.pairwise_max_pairs > 0 && total_pairs > config.pairwise_max_pairs) {
+    if (config.pdh_max_pairs > 0 && total_pairs > config.pdh_max_pairs) {
         std::mt19937_64 rng(0);
         std::uniform_int_distribution<int> dist_i(0, n - 2);
-        distances.reserve(config.pairwise_max_pairs);
-        for (int sample = 0; sample < config.pairwise_max_pairs; ++sample) {
+        distances.reserve(config.pdh_max_pairs);
+        for (int sample = 0; sample < config.pdh_max_pairs; ++sample) {
             const int i = dist_i(rng);
             std::uniform_int_distribution<int> dist_j(i + 1, n - 1);
             const int j = dist_j(rng);
             const double d = std::hypot(trees[i].x - trees[j].x, trees[i].y - trees[j].y);
-            if (d >= config.pairwise_min_dist && d <= config.pairwise_max_dist) distances.push_back(d);
+            if (d >= config.pdh_min_dist && d <= config.pdh_max_dist) distances.push_back(d);
         }
     } else {
         distances.reserve(static_cast<size_t>(std::min<int64_t>(total_pairs, 10000)));
         for (int i = 0; i + 1 < n; ++i) {
             for (int j = i + 1; j < n; ++j) {
                 const double d = std::hypot(trees[i].x - trees[j].x, trees[i].y - trees[j].y);
-                if (d >= config.pairwise_min_dist && d <= config.pairwise_max_dist) distances.push_back(d);
+                if (d >= config.pdh_min_dist && d <= config.pdh_max_dist) distances.push_back(d);
             }
         }
     }
-    if (!config.pairwise_soft_binning) {
+    if (!config.pdh_soft_binning) {
         for (double d : distances) {
-            if (d < config.pairwise_min_dist || d > config.pairwise_max_dist) continue;
-            int b = static_cast<int>(std::floor((d - config.pairwise_min_dist) * config.pairwise_bins / range));
+            if (d < config.pdh_min_dist || d > config.pdh_max_dist) continue;
+            int b = static_cast<int>(std::floor((d - config.pdh_min_dist) * config.pdh_bins / range));
             if (b < 0) b = 0;
-            if (b >= config.pairwise_bins) b = config.pairwise_bins - 1;
+            if (b >= config.pdh_bins) b = config.pdh_bins - 1;
             hist[b] += 1.0;
         }
         return hist;
     }
 
-    std::vector<double> centers(config.pairwise_bins);
-    const double width = range / config.pairwise_bins;
-    for (int i = 0; i < config.pairwise_bins; ++i) {
-        centers[i] = config.pairwise_min_dist + width * (static_cast<double>(i) + 0.5);
+    std::vector<double> centers(config.pdh_bins);
+    const double width = range / config.pdh_bins;
+    for (int i = 0; i < config.pdh_bins; ++i) {
+        centers[i] = config.pdh_min_dist + width * (static_cast<double>(i) + 0.5);
     }
     for (double d : distances) {
         int ci = 0;
-        while (ci < config.pairwise_bins && centers[ci] < d) ++ci;
-        if (ci >= config.pairwise_bins) ci = config.pairwise_bins - 1;
+        while (ci < config.pdh_bins && centers[ci] < d) ++ci;
+        if (ci >= config.pdh_bins) ci = config.pdh_bins - 1;
         const double t = std::abs(d - centers[ci]) / (width + 1e-12);
         if (t <= 1.0) {
             hist[ci] += 1.0 - t;
             const double spill = t;
             if (d < centers[ci] && ci - 1 >= 0) hist[ci - 1] += spill;
-            else if (d > centers[ci] && ci + 1 < config.pairwise_bins) hist[ci + 1] += spill;
+            else if (d > centers[ci] && ci + 1 < config.pdh_bins) hist[ci + 1] += spill;
         } else {
             hist[ci] += 1.0;
         }

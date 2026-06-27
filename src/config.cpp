@@ -167,12 +167,12 @@ void Assign(const std::string& key, const std::string& value, Config& config, si
     else if (IsKey(normalized, {"spatial_bin_min", "tdh.spatial_min_m"})) config.spatial_bin_min = ParseNumber<double>(value, normalized, line_no);
     else if (IsKey(normalized, {"spatial_bin_max", "tdh.spatial_max_m"})) config.spatial_bin_max = ParseNumber<double>(value, normalized, line_no);
     else if (IsKey(normalized, {"tdh_use_rec_only", "tdh.use_reconstructed_only"})) config.tdh_use_rec_only = ParseBool(value, normalized, line_no);
-    else if (IsKey(normalized, {"pairwise_use_rec_only", "pairwise_context.use_reconstructed_only"})) config.pairwise_use_rec_only = ParseBool(value, normalized, line_no);
-    else if (IsKey(normalized, {"pairwise_min_dist", "pairwise_context.min_distance_m"})) config.pairwise_min_dist = ParseNumber<double>(value, normalized, line_no);
-    else if (IsKey(normalized, {"pairwise_max_dist", "pairwise_context.max_distance_m"})) config.pairwise_max_dist = ParseNumber<double>(value, normalized, line_no);
-    else if (IsKey(normalized, {"pairwise_bins", "pairwise_context.bin_count"})) config.pairwise_bins = ParseNumber<int>(value, normalized, line_no);
-    else if (IsKey(normalized, {"pairwise_max_pairs", "pairwise_context.max_sampled_pairs"})) config.pairwise_max_pairs = ParseNumber<int>(value, normalized, line_no);
-    else if (IsKey(normalized, {"pairwise_soft_binning", "pairwise_context.soft_binning"})) config.pairwise_soft_binning = ParseBool(value, normalized, line_no);
+    else if (IsKey(normalized, {"pdh_use_rec_only", "pdh.use_reconstructed_only"})) config.pdh_use_rec_only = ParseBool(value, normalized, line_no);
+    else if (IsKey(normalized, {"pdh_min_dist", "pdh.min_distance_m"})) config.pdh_min_dist = ParseNumber<double>(value, normalized, line_no);
+    else if (IsKey(normalized, {"pdh_max_dist", "pdh.max_distance_m"})) config.pdh_max_dist = ParseNumber<double>(value, normalized, line_no);
+    else if (IsKey(normalized, {"pdh_bins", "pdh.bin_count"})) config.pdh_bins = ParseNumber<int>(value, normalized, line_no);
+    else if (IsKey(normalized, {"pdh_max_pairs", "pdh.max_sampled_pairs"})) config.pdh_max_pairs = ParseNumber<int>(value, normalized, line_no);
+    else if (IsKey(normalized, {"pdh_soft_binning", "pdh.soft_binning"})) config.pdh_soft_binning = ParseBool(value, normalized, line_no);
     else if (IsKey(normalized, {"use_t_aware_overlap", "translation_aware_overlap.enabled"})) config.use_t_aware_overlap = ParseBool(value, normalized, line_no);
     else if (IsKey(normalized, {"t_aware_tau", "translation_aware_overlap.tau_m"})) config.t_aware_tau = ParseNumber<double>(value, normalized, line_no);
     else if (IsKey(normalized, {"t_aware_power", "translation_aware_overlap.power"})) config.t_aware_power = ParseNumber<double>(value, normalized, line_no);
@@ -266,8 +266,8 @@ bool ValidateConfig(const Config& config, std::string* error) {
     if (config.number_of_cluster <= 0) return fail("number_of_cluster must be positive");
     if (config.local_radius <= 0.0) return fail("local_radius must be positive");
     if (config.total_section <= 0 || config.bin_width <= 0.0) return fail("radius bins are invalid");
-    if (config.pairwise_bins <= 0) return fail("pairwise_bins must be positive");
-    if (config.pairwise_max_dist <= config.pairwise_min_dist) return fail("pairwise distance range is invalid");
+    if (config.pdh_bins <= 0) return fail("pdh_bins must be positive");
+    if (config.pdh_max_dist <= config.pdh_min_dist) return fail("pdh distance range is invalid");
     if (config.spatial_range_bins.empty()) return fail("spatial bins are empty");
     if (!config.query_labels.empty() && !config.query_roots.empty() &&
         config.query_labels.size() != config.query_roots.size()) {
