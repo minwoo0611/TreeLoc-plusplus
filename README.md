@@ -152,6 +152,8 @@ Set `pose_edges.enabled: true` in a config file to export GTSAM-compatible pose 
 q_idx db_idx overlap x y z roll pitch yaw
 ```
 
+Pose-edge files are whitespace-delimited text files named `pose_<map_label>_vs_<query_label>.txt`, for example `pose_V04_vs_V03.txt`. Each row stores one relative pose from query frame `q_idx` to map frame `db_idx`; translation is in meters and roll, pitch, and yaw are in radians.
+
 Inter-session configs can also provide comma-separated `dataset.query_roots`, `dataset.map_roots`, `dataset.query_labels`, and `dataset.map_labels` for multi-session batch export. If ground-truth trajectory information is unavailable, evaluation metrics are skipped, but pose-edge export still writes ranked pairs when `pose_edges.enabled` is true.
 
 #### Graph Optimization
@@ -162,7 +164,41 @@ When GTSAM is installed, run:
 ./build/treelocpp_graph_opt sessions.csv results/pose_edges results/optimized
 ```
 
-The `sessions.csv` rows are `label,slam_csv` or `label,key,slam_csv`.
+The optimizer loads one SLAM trajectory per session from `sessions.csv`, adds TreeLoc++ pose-edge files from the pose-edge directory as cross-session constraints, and writes optimized trajectories to the output directory.
+
+Each row in `sessions.csv` defines one session:
+
+```text
+label,slam_csv
+label,key,slam_csv
+```
+
+Use `label,slam_csv` for the default case. Use `label,key,slam_csv` only when you need to choose the one-character GTSAM symbol key explicitly.
+
+Example:
+
+```csv
+V03,data/Wild_V03/trajectory.txt
+V04,data/Wild_V04/trajectory.txt
+```
+
+With the two-column format above, the graph optimizer uses `V03` and `V04` as session labels and assigns GTSAM keys automatically. It scans the pose-edge directory for files whose names use those labels:
+
+```text
+pose_V04_vs_V03.txt
+pose_V03_vs_V04.txt
+```
+
+If both directions are present, both files are loaded as cross-session constraints. A filename such as `V03_vs_V04.txt` is not loaded because the expected prefix is `pose_`.
+
+Use the three-column format when you want explicit GTSAM symbol keys:
+
+```csv
+V03,A,data/Wild_V03/trajectory.txt
+V04,B,data/Wild_V04/trajectory.txt
+```
+
+Here, `V03` and `V04` are still the labels used in pose-edge filenames, while `A` and `B` are the one-character keys used inside the GTSAM graph.
 
 ### Configuration
 
