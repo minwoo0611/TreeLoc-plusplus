@@ -4,13 +4,15 @@
 
 Official repository for **TreeLoc++**.
 
-<a href="https://arxiv.org/abs/2603.03695" target="_blank">Paper</a> |
+TreeLoc is the predecessor of TreeLoc++.
+
 <a href="https://github.com/minwoo0611/TreeLoc" target="_blank">TreeLoc</a> |
-<a href="https://drive.google.com/drive/folders/1O0d3Xg3oDdF0GC7BhcHZsiglNQmsUBNn?usp=sharing" target="_blank">Dataset</a>
+<a href="https://drive.google.com/drive/folders/1O0d3Xg3oDdF0GC7BhcHZsiglNQmsUBNn?usp=sharing" target="_blank">Dataset used in TreeLoc++</a>
 
 </div>
 
 ### Recent Updates
+- [2026/06/27] Updated the README with TreeLoc predecessor context and the public TreeLoc++ dataset link.
 - [2026/06/25] Initial TreeLoc++ branch with intra-session and inter-session C++ code.
 
 ### Contributions
