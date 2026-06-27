@@ -13,6 +13,10 @@ struct Config {
     std::filesystem::path dataset_root = "data/Wild_V02";
     std::filesystem::path query_root = "data/Wild_V03";
     std::filesystem::path database_root = "data/Wild_V02";
+    std::vector<std::filesystem::path> query_roots;
+    std::vector<std::filesystem::path> database_roots;
+    std::vector<std::string> query_labels;
+    std::vector<std::string> database_labels;
 
     int max_frames = 0;
     double spatial_threshold = 5.0;
@@ -83,6 +87,10 @@ struct Config {
     int vertical_min_sample = 4;
     double z_inlier_tol = 0.1;
     double z_inlier_ratio = 0.5;
+
+    bool save_pose_edges = false;
+    std::filesystem::path pose_edge_output_dir = "results/pose_edges";
+    std::string pose_edge_prefix = "pose";
 };
 
 std::filesystem::path DefaultConfigPath(const std::string& mode);

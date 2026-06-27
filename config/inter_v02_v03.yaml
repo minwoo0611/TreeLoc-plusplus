@@ -85,3 +85,8 @@ pose_refinement:
   ransac_min_sample: 4  # Minimum tree-pair sample size for pose refinement.
   z_inlier_tolerance_m: 0.1  # Z residual threshold for refinement inliers.
   z_inlier_ratio: 0.5  # Minimum inlier ratio for accepting pose refinement.
+
+pose_edges:
+  enabled: false  # Whether GTSAM-compatible pose edge files are written.
+  output_dir: results/pose_edges  # Directory for pose_<map>_vs_<query>.txt edge files.
+  prefix: pose  # Prefix used for exported pose edge filenames.

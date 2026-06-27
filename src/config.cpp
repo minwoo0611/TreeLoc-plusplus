@@ -41,6 +41,47 @@ std::string ParseString(const std::string& value) {
     return out;
 }
 
+std::vector<std::string> ParseStringList(const std::string& value) {
+    std::string text = ParseString(value);
+    if (text.size() >= 2 && text.front() == '[' && text.back() == ']') {
+        text = text.substr(1, text.size() - 2);
+    }
+    std::vector<std::string> out;
+    std::string item;
+    bool single = false;
+    bool dbl = false;
+    for (char ch : text) {
+        if (ch == '\'' && !dbl) {
+            single = !single;
+            item.push_back(ch);
+            continue;
+        }
+        if (ch == '"' && !single) {
+            dbl = !dbl;
+            item.push_back(ch);
+            continue;
+        }
+        if ((ch == ',' || ch == ';') && !single && !dbl) {
+            std::string parsed = ParseString(item);
+            parsed = Trim(parsed);
+            if (!parsed.empty()) out.push_back(parsed);
+            item.clear();
+            continue;
+        }
+        item.push_back(ch);
+    }
+    std::string parsed = ParseString(item);
+    parsed = Trim(parsed);
+    if (!parsed.empty()) out.push_back(parsed);
+    return out;
+}
+
+std::vector<std::filesystem::path> ParsePathList(const std::string& value) {
+    std::vector<std::filesystem::path> out;
+    for (const auto& item : ParseStringList(value)) out.emplace_back(item);
+    return out;
+}
+
 std::string Lower(std::string text) {
     std::transform(text.begin(), text.end(), text.begin(),
                    [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
@@ -86,6 +127,10 @@ void Assign(const std::string& key, const std::string& value, Config& config, si
     else if (IsKey(normalized, {"dataset_root", "dataset.root", "dataset.dataset_root"})) config.dataset_root = ParseString(value);
     else if (IsKey(normalized, {"query_root", "dataset.query_root"})) config.query_root = ParseString(value);
     else if (IsKey(normalized, {"database_root", "map_root", "dataset.map_root", "dataset.database_root"})) config.database_root = ParseString(value);
+    else if (IsKey(normalized, {"query_roots", "dataset.query_roots"})) config.query_roots = ParsePathList(value);
+    else if (IsKey(normalized, {"database_roots", "map_roots", "dataset.map_roots", "dataset.database_roots"})) config.database_roots = ParsePathList(value);
+    else if (IsKey(normalized, {"query_labels", "dataset.query_labels"})) config.query_labels = ParseStringList(value);
+    else if (IsKey(normalized, {"database_labels", "map_labels", "dataset.map_labels", "dataset.database_labels"})) config.database_labels = ParseStringList(value);
     else if (IsKey(normalized, {"max_frames", "frame_limit", "dataset.frame_limit"})) config.max_frames = ParseNumber<int>(value, normalized, line_no);
     else if (IsKey(normalized, {"spatial_threshold", "gt_radius_m", "evaluation.gt_radius_m"})) config.spatial_threshold = ParseNumber<double>(value, normalized, line_no);
     else if (IsKey(normalized, {"use_test_polygons", "evaluation.use_test_regions"})) config.use_test_polygons = ParseBool(value, normalized, line_no);
@@ -146,6 +191,9 @@ void Assign(const std::string& key, const std::string& value, Config& config, si
     else if (IsKey(normalized, {"vertical_min_sample", "pose_refinement.ransac_min_sample"})) config.vertical_min_sample = ParseNumber<int>(value, normalized, line_no);
     else if (IsKey(normalized, {"z_inlier_tol", "pose_refinement.z_inlier_tolerance_m"})) config.z_inlier_tol = ParseNumber<double>(value, normalized, line_no);
     else if (IsKey(normalized, {"z_inlier_ratio", "pose_refinement.z_inlier_ratio"})) config.z_inlier_ratio = ParseNumber<double>(value, normalized, line_no);
+    else if (IsKey(normalized, {"save_pose_edges", "pose_edges.enabled"})) config.save_pose_edges = ParseBool(value, normalized, line_no);
+    else if (IsKey(normalized, {"pose_edge_output_dir", "pose_edges.output_dir"})) config.pose_edge_output_dir = ParseString(value);
+    else if (IsKey(normalized, {"pose_edge_prefix", "pose_edges.prefix"})) config.pose_edge_prefix = ParseString(value);
     else throw std::runtime_error("unknown config key " + normalized + " on line " + std::to_string(line_no));
 }
 
@@ -221,6 +269,14 @@ bool ValidateConfig(const Config& config, std::string* error) {
     if (config.pairwise_bins <= 0) return fail("pairwise_bins must be positive");
     if (config.pairwise_max_dist <= config.pairwise_min_dist) return fail("pairwise distance range is invalid");
     if (config.spatial_range_bins.empty()) return fail("spatial bins are empty");
+    if (!config.query_labels.empty() && !config.query_roots.empty() &&
+        config.query_labels.size() != config.query_roots.size()) {
+        return fail("query_labels must match query_roots");
+    }
+    if (!config.database_labels.empty() && !config.database_roots.empty() &&
+        config.database_labels.size() != config.database_roots.size()) {
+        return fail("database_labels must match database_roots");
+    }
     return true;
 }
 

@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cmath>
+#include <cctype>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -35,6 +37,96 @@ struct LocalizationDetail {
     double yaw = 0.0;
     double rot_norm = 0.0;
 };
+
+std::string SanitizeLabel(std::string label) {
+    if (label.empty()) return "dataset";
+    for (char& ch : label) {
+        const unsigned char uch = static_cast<unsigned char>(ch);
+        if (!std::isalnum(uch) && ch != '-' && ch != '_') ch = '_';
+    }
+    return label;
+}
+
+Eigen::Matrix4d PredictedRelativeTransform(const FrameData& qf,
+                                           const FrameData& cf,
+                                           const CandidateResult& best) {
+    Eigen::Matrix3d Rz_q2c = Eigen::Matrix3d::Identity();
+    Rz_q2c.block<2, 2>(0, 0) = best.transform.R;
+    const Eigen::Matrix3d R_rp_q2c =
+        Eigen::AngleAxisd(best.vertical.axis_pitch, Eigen::Vector3d::UnitY()).toRotationMatrix() *
+        Eigen::AngleAxisd(best.vertical.axis_roll, Eigen::Vector3d::UnitX()).toRotationMatrix();
+    const Eigen::Matrix3d R_q2c = Rz_q2c * R_rp_q2c;
+    const Eigen::Vector3d t_q2c(best.transform.t.x(), best.transform.t.y(), 0.0);
+
+    Eigen::Matrix3d R_c2q = R_q2c.transpose();
+    Eigen::Vector3d t_c2q = -R_c2q * t_q2c;
+    const Eigen::Matrix3d delta_r_c2q =
+        Eigen::AngleAxisd(best.vertical.pitch, Eigen::Vector3d::UnitY()).toRotationMatrix() *
+        Eigen::AngleAxisd(best.vertical.roll, Eigen::Vector3d::UnitX()).toRotationMatrix();
+    R_c2q = delta_r_c2q * R_c2q;
+    t_c2q += Eigen::Vector3d(0.0, 0.0, best.vertical.z);
+
+    Eigen::Matrix4d T_pred_aligned = Eigen::Matrix4d::Identity();
+    T_pred_aligned.block<3, 3>(0, 0) = R_c2q;
+    T_pred_aligned.block<3, 1>(0, 3) = t_c2q;
+
+    return qf.alignment_transform.inverse() *
+        T_pred_aligned *
+        cf.alignment_transform;
+}
+
+std::filesystem::path PoseEdgePath(const Config& config, const std::string& name) {
+    return config.pose_edge_output_dir /
+        (config.pose_edge_prefix + "_" + SanitizeLabel(name) + ".txt");
+}
+
+std::ofstream OpenPoseEdgeFile(const Config& config, const std::string& name) {
+    std::ofstream out;
+    if (!config.save_pose_edges) return out;
+    std::filesystem::create_directories(config.pose_edge_output_dir);
+    out.open(PoseEdgePath(config, name));
+    if (!out) {
+        throw std::runtime_error("could not open pose edge output: " +
+                                 PoseEdgePath(config, name).string());
+    }
+    out << std::fixed << std::setprecision(9);
+    return out;
+}
+
+void WritePoseEdge(std::ostream& out,
+                   const FrameData& qf,
+                   const FrameData& cf,
+                   const CandidateResult& result) {
+    if (!out || !result.transform.ok) return;
+    const Eigen::Matrix4d T = PredictedRelativeTransform(qf, cf, result);
+    double roll = 0.0;
+    double pitch = 0.0;
+    double yaw = 0.0;
+    EulerZYX(T.block<3, 3>(0, 0), roll, pitch, yaw);
+    const Eigen::Vector3d t = T.block<3, 1>(0, 3);
+    out << qf.index << " " << cf.index << " " << result.transform.overlap
+        << " " << t.x() << " " << t.y() << " " << t.z()
+        << " " << roll << " " << pitch << " " << yaw << "\n";
+}
+
+std::vector<std::filesystem::path> QueryRoots(const Config& config) {
+    return config.query_roots.empty()
+        ? std::vector<std::filesystem::path>{config.query_root}
+        : config.query_roots;
+}
+
+std::vector<std::filesystem::path> DatabaseRoots(const Config& config) {
+    return config.database_roots.empty()
+        ? std::vector<std::filesystem::path>{config.database_root}
+        : config.database_roots;
+}
+
+std::string RootLabel(const std::filesystem::path& root,
+                      const std::vector<std::string>& labels,
+                      size_t index) {
+    if (index < labels.size() && !labels[index].empty()) return labels[index];
+    return DatasetName(root);
+}
 
 std::string JoinLines(const std::vector<std::string>& lines) {
     std::ostringstream out;
@@ -200,31 +292,7 @@ LocalizationDetail AccumulateLocalization(const FrameData& qf,
     const Eigen::Matrix4d T_rel_gt = Tq.inverse() * Tc;
     const Eigen::Vector3d pos_rel_gt = T_rel_gt.block<3, 1>(0, 3);
     const Eigen::Matrix3d R_rel_gt = T_rel_gt.block<3, 3>(0, 0);
-
-    Eigen::Matrix3d Rz_q2c = Eigen::Matrix3d::Identity();
-    Rz_q2c.block<2, 2>(0, 0) = best.transform.R;
-    const Eigen::Matrix3d R_rp_q2c =
-        Eigen::AngleAxisd(best.vertical.axis_pitch, Eigen::Vector3d::UnitY()).toRotationMatrix() *
-        Eigen::AngleAxisd(best.vertical.axis_roll, Eigen::Vector3d::UnitX()).toRotationMatrix();
-    const Eigen::Matrix3d R_q2c = Rz_q2c * R_rp_q2c;
-    Eigen::Vector3d t_q2c(best.transform.t.x(), best.transform.t.y(), 0.0);
-
-    Eigen::Matrix3d R_c2q = R_q2c.transpose();
-    Eigen::Vector3d t_c2q = -R_c2q * t_q2c;
-    const Eigen::Matrix3d delta_r_c2q =
-        Eigen::AngleAxisd(best.vertical.pitch, Eigen::Vector3d::UnitY()).toRotationMatrix() *
-        Eigen::AngleAxisd(best.vertical.roll, Eigen::Vector3d::UnitX()).toRotationMatrix();
-    R_c2q = delta_r_c2q * R_c2q;
-    t_c2q += Eigen::Vector3d(0.0, 0.0, best.vertical.z);
-
-    Eigen::Matrix4d T_pred_aligned = Eigen::Matrix4d::Identity();
-    T_pred_aligned.block<3, 3>(0, 0) = R_c2q;
-    T_pred_aligned.block<3, 1>(0, 3) = t_c2q;
-
-    const Eigen::Matrix4d T_rel_pred =
-        qf.alignment_transform.inverse() *
-        T_pred_aligned *
-        cf.alignment_transform;
+    const Eigen::Matrix4d T_rel_pred = PredictedRelativeTransform(qf, cf, best);
     const Eigen::Vector3d pos_rel_pred = T_rel_pred.block<3, 1>(0, 3);
     const Eigen::Matrix3d R_rel_pred = T_rel_pred.block<3, 3>(0, 0);
 
@@ -364,6 +432,80 @@ std::pair<int, int> TopCandidateGtCounts(const Dataset& qset,
     return {gt_hist, gt_hash};
 }
 
+void RunInterPair(const Config& config,
+                  const std::filesystem::path& query_root,
+                  const std::filesystem::path& database_root,
+                  const std::string& query_label,
+                  const std::string& database_label,
+                  EvaluationSummary& summary) {
+    std::vector<std::string> schema_errors =
+        TreeCsvSchemaErrors(query_root, config.max_frames, "query_root");
+    const std::vector<std::string> database_errors =
+        TreeCsvSchemaErrors(database_root, config.max_frames, "database_root");
+    schema_errors.insert(schema_errors.end(), database_errors.begin(), database_errors.end());
+    ThrowIfSchemaErrors(schema_errors);
+
+    Dataset queries = LoadDataset(query_root, config, config.neighbor_past_only, config.query_yaw_deg);
+    Dataset database = LoadDataset(database_root, config, config.neighbor_past_only, config.database_yaw_deg);
+    const PolygonSet* test_polygons = nullptr;
+    if (config.use_test_polygons) test_polygons = &SelectTestPolygons(config, query_root);
+    summary.queries += static_cast<int>(queries.frames.size());
+
+    std::ofstream edge_out = OpenPoseEdgeFile(
+        config, SanitizeLabel(database_label) + "_vs_" + SanitizeLabel(query_label));
+
+    std::ofstream debug;
+    if (const char* path = std::getenv("TREELOCPP_DEBUG_CSV")) {
+        debug.open(path, std::ios::app);
+        if (debug && debug.tellp() == 0) {
+            debug << "mode,query,candidate,true_neighbor,spatial_error,overlap,"
+                  << "txy,txyz,z_err,roll_err_deg,pitch_err_deg,yaw_err_deg,rot_norm_deg,"
+                  << "ok_2d,ok_6d,z_offset,plane_roll_deg,plane_pitch_deg,"
+                  << "axis_roll_deg,axis_pitch_deg,match_count\n";
+        }
+    }
+    std::vector<size_t> all_db(database.frames.size());
+    std::iota(all_db.begin(), all_db.end(), 0);
+    for (size_t q = 0; q < queries.frames.size(); ++q) {
+        if (test_polygons && !InTestPolygons(queries.frames[q].pose, *test_polygons)) continue;
+        const auto gt = GroundTruth(queries, database, q, all_db, config);
+        if (gt.empty()) continue;
+        auto ranked = RankCandidates(queries, database, q, all_db, config);
+        if (ranked.empty()) continue;
+        for (const auto& result : ranked) {
+            const FrameData& ranked_cf =
+                database.frames.at(database.frame_to_slot.at(result.candidate_index));
+            WritePoseEdge(edge_out, queries.frames[q], ranked_cf, result);
+        }
+        const auto [gt_hist, gt_hash] = TopCandidateGtCounts(queries, database, q, all_db, gt, config);
+        CandidateResult best = ranked.front();
+        best.true_neighbor = gt.count(best.candidate_index) > 0;
+        const FrameData& cf = database.frames.at(database.frame_to_slot.at(best.candidate_index));
+        ++summary.evaluated;
+        if (gt_hist == 0) ++summary.zero_gt_top_histogram;
+        if (gt_hash == 0) ++summary.zero_gt_top_hash;
+        summary.mean_gt_top_histogram += gt_hist;
+        if (best.true_neighbor) ++summary.true_positive;
+        Accumulate(best, summary);
+        const LocalizationDetail detail =
+            AccumulateLocalization(queries.frames[q], cf, best, best.true_neighbor, summary);
+        if (debug && detail.valid) {
+            debug << "inter," << queries.frames[q].index << "," << best.candidate_index << ","
+                  << (best.true_neighbor ? 1 : 0) << "," << best.spatial_error << ","
+                  << best.transform.overlap << "," << detail.txy << "," << detail.txyz << ","
+                  << detail.z << "," << detail.roll * 180.0 / M_PI << ","
+                  << detail.pitch * 180.0 / M_PI << "," << detail.yaw * 180.0 / M_PI << ","
+                  << detail.rot_norm * 180.0 / M_PI << "," << (detail.ok_2d ? 1 : 0) << ","
+                  << (detail.ok_6d ? 1 : 0) << "," << best.vertical.z << ","
+                  << best.vertical.roll * 180.0 / M_PI << ","
+                  << best.vertical.pitch * 180.0 / M_PI << ","
+                  << best.vertical.axis_roll * 180.0 / M_PI << ","
+                  << best.vertical.axis_pitch * 180.0 / M_PI << ","
+                  << best.transform.pairs.size() << "\n";
+        }
+    }
+}
+
 }  // namespace
 
 EvaluationSummary RunIntraSession(const Config& config) {
@@ -381,6 +523,7 @@ EvaluationSummary RunIntraSession(const Config& config) {
                   << "axis_roll_deg,axis_pitch_deg,match_count\n";
         }
     }
+    std::ofstream edge_out = OpenPoseEdgeFile(config, DatasetName(config.dataset_root));
     for (size_t q = 0; q < dataset.frames.size(); ++q) {
         const auto candidates = IntraCandidates(dataset, q, config);
         if (candidates.empty()) continue;
@@ -388,6 +531,11 @@ EvaluationSummary RunIntraSession(const Config& config) {
         if (gt.empty()) continue;
         auto ranked = RankCandidates(dataset, dataset, q, candidates, config);
         if (ranked.empty()) continue;
+        for (const auto& result : ranked) {
+            const FrameData& ranked_cf =
+                dataset.frames.at(dataset.frame_to_slot.at(result.candidate_index));
+            WritePoseEdge(edge_out, dataset.frames[q], ranked_cf, result);
+        }
         CandidateResult best = ranked.front();
         best.true_neighbor = gt.count(best.candidate_index) > 0;
         const FrameData& cf = dataset.frames.at(dataset.frame_to_slot.at(best.candidate_index));
@@ -416,62 +564,14 @@ EvaluationSummary RunIntraSession(const Config& config) {
 }
 
 EvaluationSummary RunInterSession(const Config& config) {
-    std::vector<std::string> schema_errors =
-        TreeCsvSchemaErrors(config.query_root, config.max_frames, "query_root");
-    const std::vector<std::string> database_errors =
-        TreeCsvSchemaErrors(config.database_root, config.max_frames, "database_root");
-    schema_errors.insert(schema_errors.end(), database_errors.begin(), database_errors.end());
-    ThrowIfSchemaErrors(schema_errors);
-
-    Dataset queries = LoadDataset(config.query_root, config, config.neighbor_past_only, config.query_yaw_deg);
-    Dataset database = LoadDataset(config.database_root, config, config.neighbor_past_only, config.database_yaw_deg);
-    const PolygonSet* test_polygons = nullptr;
-    if (config.use_test_polygons) test_polygons = &SelectTestPolygons(config, config.query_root);
     EvaluationSummary summary;
-    summary.queries = static_cast<int>(queries.frames.size());
-    std::ofstream debug;
-    if (const char* path = std::getenv("TREELOCPP_DEBUG_CSV")) {
-        debug.open(path);
-        if (debug) {
-            debug << "mode,query,candidate,true_neighbor,spatial_error,overlap,"
-                  << "txy,txyz,z_err,roll_err_deg,pitch_err_deg,yaw_err_deg,rot_norm_deg,"
-                  << "ok_2d,ok_6d,z_offset,plane_roll_deg,plane_pitch_deg,"
-                  << "axis_roll_deg,axis_pitch_deg,match_count\n";
-        }
-    }
-    std::vector<size_t> all_db(database.frames.size());
-    std::iota(all_db.begin(), all_db.end(), 0);
-    for (size_t q = 0; q < queries.frames.size(); ++q) {
-        if (test_polygons && !InTestPolygons(queries.frames[q].pose, *test_polygons)) continue;
-        const auto gt = GroundTruth(queries, database, q, all_db, config);
-        if (gt.empty()) continue;
-        auto ranked = RankCandidates(queries, database, q, all_db, config);
-        if (ranked.empty()) continue;
-        const auto [gt_hist, gt_hash] = TopCandidateGtCounts(queries, database, q, all_db, gt, config);
-        CandidateResult best = ranked.front();
-        best.true_neighbor = gt.count(best.candidate_index) > 0;
-        const FrameData& cf = database.frames.at(database.frame_to_slot.at(best.candidate_index));
-        ++summary.evaluated;
-        if (gt_hist == 0) ++summary.zero_gt_top_histogram;
-        if (gt_hash == 0) ++summary.zero_gt_top_hash;
-        summary.mean_gt_top_histogram += gt_hist;
-        if (best.true_neighbor) ++summary.true_positive;
-        Accumulate(best, summary);
-        const LocalizationDetail detail =
-            AccumulateLocalization(queries.frames[q], cf, best, best.true_neighbor, summary);
-        if (debug && detail.valid) {
-            debug << "inter," << queries.frames[q].index << "," << best.candidate_index << ","
-                  << (best.true_neighbor ? 1 : 0) << "," << best.spatial_error << ","
-                  << best.transform.overlap << "," << detail.txy << "," << detail.txyz << ","
-                  << detail.z << "," << detail.roll * 180.0 / M_PI << ","
-                  << detail.pitch * 180.0 / M_PI << "," << detail.yaw * 180.0 / M_PI << ","
-                  << detail.rot_norm * 180.0 / M_PI << "," << (detail.ok_2d ? 1 : 0) << ","
-                  << (detail.ok_6d ? 1 : 0) << "," << best.vertical.z << ","
-                  << best.vertical.roll * 180.0 / M_PI << ","
-                  << best.vertical.pitch * 180.0 / M_PI << ","
-                  << best.vertical.axis_roll * 180.0 / M_PI << ","
-                  << best.vertical.axis_pitch * 180.0 / M_PI << ","
-                  << best.transform.pairs.size() << "\n";
+    const auto query_roots = QueryRoots(config);
+    const auto database_roots = DatabaseRoots(config);
+    for (size_t qi = 0; qi < query_roots.size(); ++qi) {
+        const std::string q_label = RootLabel(query_roots[qi], config.query_labels, qi);
+        for (size_t di = 0; di < database_roots.size(); ++di) {
+            const std::string d_label = RootLabel(database_roots[di], config.database_labels, di);
+            RunInterPair(config, query_roots[qi], database_roots[di], q_label, d_label, summary);
         }
     }
     Finalize(summary);

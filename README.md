@@ -81,6 +81,7 @@ This builds:
 
 - `treelocpp_intra`
 - `treelocpp_inter`
+- `treelocpp_graph_opt` when GTSAM is available
 
 ### Usage
 
@@ -122,6 +123,22 @@ Run inter-session evaluation:
 
 `config/inter_v02_v03.yaml` uses the Wild_V/Wild_K test-region family selected by `test_region_family` and a 5 m ground-truth radius.
 
+To export GTSAM-compatible pose edges, set `pose_edges.enabled: true`. The edge files use:
+
+```text
+q_idx db_idx overlap x y z roll pitch yaw
+```
+
+Inter-session configs can also provide comma-separated `dataset.query_roots`, `dataset.map_roots`, `dataset.query_labels`, and `dataset.map_labels` for multi-session batch export.
+
+When GTSAM is installed, graph optimization can be run with:
+
+```bash
+./build/treelocpp_graph_opt sessions.csv results/pose_edges results/optimized
+```
+
+The `sessions.csv` rows are `label,slam_csv` or `label,key,slam_csv`.
+
 ### Configuration
 
 Main parameters are grouped by role in:
@@ -132,13 +149,12 @@ Main parameters are grouped by role in:
 - `config/full_oxford_stein.yaml` for full Oxford_Stein intra-session evaluation
 - `config/inter_v02_v03.yaml` for full Wild_V03-to-Wild_V02 inter-session evaluation
 
-The YAML files use sections such as `dataset`, `evaluation`, `retrieval`, `tree_selection`, `tdh`, `triangle_descriptor`, and `pose_refinement`; each variable has an inline comment describing its role. The public configuration keeps method-level settings exposed and leaves tree-axis alignment as the default TreeLoc++ descriptor-frame construction step. Legacy flat keys are still accepted by the parser for compatibility.
+The YAML files use sections such as `dataset`, `evaluation`, `retrieval`, `tree_selection`, `tdh`, `triangle_descriptor`, `pose_refinement`, and `pose_edges`; each variable has an inline comment describing its role. The public configuration keeps method-level settings exposed and leaves tree-axis alignment as the default TreeLoc++ descriptor-frame construction step. Legacy flat keys are still accepted by the parser for compatibility.
 
 ### TODO
 
 - Multi-session Dataset (Evo25) upload
 - Remaining dataset upload
-- Multi-session graph optimization
 
 ### Acknowledgement
 
