@@ -4,15 +4,13 @@
 
 Official repository for **TreeLoc++**.
 
-TreeLoc is the predecessor of TreeLoc++.
-
-<a href="https://github.com/minwoo0611/TreeLoc" target="_blank">TreeLoc</a> |
-<a href="https://drive.google.com/drive/folders/1O0d3Xg3oDdF0GC7BhcHZsiglNQmsUBNn?usp=sharing" target="_blank">Dataset used in TreeLoc++</a>
+<a href="https://github.com/minwoo0611/TreeLoc" target="_blank">Previous version (TreeLoc)</a> |
+<a href="https://drive.google.com/drive/folders/1O0d3Xg3oDdF0GC7BhcHZsiglNQmsUBNn?usp=sharing" target="_blank">Dataset</a>
 
 </div>
 
 ### Recent Updates
-- [2026/06/27] Updated the README with TreeLoc predecessor context and the public TreeLoc++ dataset link.
+- [2026/06/27] Added public dataset release details and multi-session pose-edge/graph-optimization code.
 - [2026/06/25] Initial TreeLoc++ branch with intra-session and inter-session C++ code.
 
 ### Contributions
@@ -29,7 +27,7 @@ The bundled sample datasets correspond to:
 
 - `Wild_V01` and `Wild_V02`: Wild-Places Venman sequences. The raw dataset is available from the [Wild-Places project page](https://csiro-robotics.github.io/Wild-Places/) and [CSIRO Data Access Portal](https://data.csiro.au/collection/csiro%3A56372).
 
-The full public release also includes Oxford Evo, Stein am Rein, Forest of Dean, Wytham, and multi-session Evo23/Evo25 sequences. The Oxford raw recordings are available from the [Oxford Forest Place Recognition Dataset](https://dynamic.robots.ox.ac.uk/datasets/oxford-forest/).
+The full public release also includes Oxford Evo, Stein am Rein, Forest of Dean, Wytham, and multi-session Evo23/Evo25 sequences. The single-session Oxford raw recordings are available from the [Oxford Forest Place Recognition Dataset](https://dynamic.robots.ox.ac.uk/datasets/oxford-forest/).
 
 The evaluator expects a processed dataset root:
 
